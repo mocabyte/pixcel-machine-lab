@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diffusion Models: The Genesis of Reality</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Rajdhani:wght@400;600;700&display=swap');
+
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #bc13fe;
+            --neon-green: #0aff0a;
+            --bg-dark: #050510;
+            --panel-bg: rgba(20, 20, 35, 0.95);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #e0e0e0;
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        .math-inline {
+            display: inline-block; vertical-align: middle; filter: invert(1);
+            height: 1.2em; margin: 0 2px;
+        }
+
+        .math-block {
+            display: block; margin: 10px auto; filter: invert(1);
+            height: auto; max-width: 100%; padding: 5px;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a1a; }
+        ::-webkit-scrollbar-thumb { background: var(--neon-blue); border-radius: 4px; }
+
+        .glitch { position: relative; color: white; }
+        .glitch::before, .glitch::after {
+            content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+        .glitch::before {
+            left: 2px; text-shadow: -1px 0 var(--neon-pink); clip: rect(24px, 550px, 90px, 0);
+            animation: glitch-anim-2 3s infinite linear alternate-reverse;
+        }
+        .glitch::after {
+            left: -2px; text-shadow: -1px 0 var(--neon-blue); clip: rect(85px, 550px, 140px, 0);
+            animation: glitch-anim 2.5s infinite linear alternate-reverse;
+        }
+
+        .cyber-panel {
+            background: var(--panel-bg);
+            border: 1px solid #333;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.05);
+            backdrop-filter: blur(5px);
+            position: relative;
+        }
+        .cyber-panel::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 10px; height: 10px;
+            border-top: 2px solid var(--neon-blue); border-left: 2px solid var(--neon-blue);
+        }
+        .cyber-panel::after {
+            content: ''; position: absolute; bottom: 0; right: 0; width: 10px; height: 10px;
+            border-bottom: 2px solid var(--neon-pink); border-right: 2px solid var(--neon-pink);
+        }
+
+        .nav-btn.active {
+            background: rgba(0, 243, 255, 0.15);
+            border-left: 4px solid var(--neon-blue);
+            color: var(--neon-blue);
+        }
+
+        .chart-container {
+            position: relative; width: 100%; max-width: 600px; margin: 0 auto; height: 300px; overflow: hidden; 
+        }
+        
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 20px; width: 20px;
+            background: var(--neon-pink); margin-top: -8px;
+            box-shadow: 0 0 10px var(--neon-pink); border: 2px solid white; cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; background: #333; border: 1px solid #555;
+        }
+
+        .speaker-bubble {
+            background-color: rgba(30, 30, 45, 0.9); border: 1px solid #333; padding: 16px; 
+            border-radius: 12px; margin-top: 1rem; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); transition: all 0.3s ease;
+        }
+        
+        /* Updated Avatar CSS for Images */
+        .speaker-avatar-container {
+            position: relative;
+            width: 56px; 
+            height: 56px;
+        }
+        .speaker-avatar {
+            width: 100%; 
+            height: 100%; 
+            border-radius: 50%; 
+            background-color: #222;
+            object-fit: cover; /* Ensures image covers circle without distortion */
+            border: 2px solid var(--neon-blue);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        /* Discord Online Status Dot */
+        .status-dot {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 16px;
+            height: 16px;
+            background-color: #0aff0a; /* Online Green */
+            border: 3px solid #000; /* Cutout effect */
+            border-radius: 50%;
+        }
+
+        .speaker-status {
+            font-size: 10px; text-transform: uppercase; font-weight: 700; margin-top: 2px;
+            animation: pulse-speaker 2s infinite;
+        }
+
+        /* Subtiler Neon-Glow für die Überschriften */
+        .neon-title {
+            text-shadow: 
+            0 0 2px #fff,
+            0 0 10px var(--neon-blue),
+            0 0 15px var(--neon-pink);
+            transition: text-shadow 0.3s ease;
+}
+        
+        @keyframes pulse-speaker { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        @keyframes glitch-anim { 0% { clip: rect(11px, 9999px, 81px, 0); } 100% { clip: rect(96px, 9999px, 15px, 0); } }
+        @keyframes glitch-anim-2 { 0% { clip: rect(65px, 9999px, 100px, 0); } 100% { clip: rect(22px, 9999px, 59px, 0); } }
+
+        /* --- PDF PRINT OPTIMIZATION --- */
+        @media print {
+            @page {
+                size: landscape;
+                margin: 0;
+            }
+            body {
+                background-color: #050510 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                overflow: visible !important;
+            }
+            #sidebar, .md\:hidden, #mobile-menu-btn {
+                display: none !important;
+            }
+            main {
+                display: block !important;
+                height: auto !important;
+                overflow: visible !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            section {
+                display: flex !important;
+                flex-direction: column;
+                justify-content: center;
+                min-height: 100vh !important;
+                height: 100vh !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                opacity: 1 !important;
+                padding: 2rem !important;
+            }
+            /* Hide Simulator Inputs for Print but keep Canvas */
+            #simulation input, #simulation button {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row">
+
+    <div class="md:hidden w-full bg-black border-b border-cyan-500 p-4 flex justify-between items-center z-50">
+        <h1 class="text-xl font-bold font-mono text-cyan-400">DIFFUSION.OS</h1>
+        <button id="mobile-menu-btn" class="text-white border border-cyan-500 px-3 py-1">MENU</button>
+    </div>
+
+    <nav id="sidebar" class="hidden md:flex flex-col w-72 bg-black border-r border-gray-800 h-screen fixed md:relative z-40 transition-transform duration-300 transform -translate-x-full md:translate-x-0">
+        <div class="p-6 border-b border-gray-800">
+            <h1 class="text-3xl font-bold font-mono glitch" data-text="DIFFUSION.OS">DIFFUSION.OS</h1>
+            <p class="text-xs text-gray-500 mt-2 font-mono">DeepDive v.FINAL</p>
+        </div>
+        
+        <div class="p-4 border-b border-gray-800 speaker-bubble mx-2">
+            <div class="flex items-center space-x-3">
+                <div class="speaker-avatar-container">
+                    <img id="speaker-avatar" class="speaker-avatar" src="" alt="Avatar">
+                    <div class="status-dot"></div>
+                </div>
+                <div class="flex-1">
+                    <div class="text-[10px] text-gray-500 font-mono mb-1">CURRENT SPEAKER</div>
+                    
+                    <div class="flex items-center justify-between">
+                        <div id="speaker-name" class="speaker-name text-lg leading-tight">Anisa Chakiri</div>
+                        <div id="speaker-role" class="speaker-status text-green-400 text-sm font-mono ml-2">ACTIVE</div>
+                    </div>
+                    
+                    <div id="speaker-id" class="text-xs text-gray-400 font-mono mt-0"></div>
+                </div>
+            </div>
+            <p class="mt-3 text-xs text-gray-400 font-mono border-t border-gray-700 pt-2">
+                TOPIC: <span id="current-topic" class="text-white">Intro</span>
+            </p>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-4">
+            <button onclick="navTo('intro')" class="nav-btn w-full text-left px-6 py-3 hover:bg-gray-900 transition-colors text-gray-300 font-mono text-sm uppercase tracking-wider active" id="btn-intro">01 Intro</button>
+            <button onclick="navTo('physics')" class="nav-btn w-full text-left px-6 py-3 hover:bg-gray-900 transition-colors text-gray-300 font-mono text-sm uppercase tracking-wider" id="btn-physics">02 Forward & Reverse</button>
+            <button onclick="navTo('unet')" class="nav-btn w-full text-left px-6 py-3 hover:bg-gray-900 transition-colors text-gray-300 font-mono text-sm uppercase tracking-wider" id="btn-unet">03 The UNet</button>
+            <button onclick="navTo('stablediff')" class="nav-btn w-full text-left px-6 py-3 hover:bg-gray-900 transition-colors text-gray-300 font-mono text-sm uppercase tracking-wider" id="btn-stablediff">04 Stable Diffusion</button>
+            <button onclick="navTo('comparison')" class="nav-btn w-full text-left px-6 py-3 hover:bg-gray-900 transition-colors text-gray-300 font-mono text-sm uppercase tracking-wider" id="btn-comparison">05 Vergleich vs GANs</button>
+            <button onclick="navTo('simulation')" class="nav-btn w-full text-left px-6 py-3 hover:bg-gray-900 transition-colors text-gray-300 font-mono text-sm uppercase tracking-wider text-fuchsia-400" id="btn-simulation">06 Sim: Prompting</button>
+            <button onclick="navTo('summary')" class="nav-btn w-full text-left px-6 py-3 hover:bg-gray-900 transition-colors text-gray-300 font-mono text-sm uppercase tracking-wider" id="btn-summary">07 Fazit & Ausblick</button>
+            <button onclick="navTo('references')" class="nav-btn w-full text-left px-6 py-3 hover:bg-gray-900 transition-colors text-gray-300 font-mono text-sm uppercase tracking-wider" id="btn-references">08 Quellen</button>
+        </div>
+    </nav>
+
+    <main class="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative scroll-smooth bg-[#050510]" id="main-content">
+        
+        <section id="intro" class="min-h-screen flex flex-col justify-center max-w-5xl mx-auto space-y-8 animate-fade-in">
+            <div class="cyber-panel p-8 md:p-12 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 text-9xl font-bold select-none text-cyan-900 pointer-events-none">GENESIS</div>
+                <h2 class="text-5xl md:text-7xl font-bold mb-4 text-white uppercase tracking-tighter"><span class="text-fuchsia-400">Diffusion</span> Models</h2>
+                <h3 class="text-2xl text-cyan-400 font-mono mb-8">From Noise to Reality</h3>
+                <p class="text-xl md:text-2xl text-gray-300 max-w-2xl leading-relaxed mb-8 border-l-4 border-fuchsia-500 pl-6">
+                    "Wie entsteht aus 'Schnee auf dem Fernseher' ein perfektes, fotorealistisches Bild?"
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    <div class="bg-black/40 p-4 border border-gray-700">
+                        <strong class="text-white block mb-2">Die Revolution</strong>
+                        <p class="text-sm text-gray-400">Midjourney, DALL-E, Stable Diffusion. Die Ablösung klassischer Methoden durch physik-inspirierte KI.</p>
+                    </div>
+                    <div class="bg-black/40 p-4 border border-gray-700">
+                        <strong class="text-white block mb-2">Die Kernidee</strong>
+                        <p class="text-sm text-gray-400">Lernen, den Prozess der Zerstörung (Diffusion) umzukehren.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+   <section id="physics" class="min-h-screen pt-12 max-w-7xl mx-auto space-y-8 hidden">
+            <div class="mb-6">
+                <h2 class="text-4xl font-bold text-white mb-2"><span class="text-fuchsia-400">02 //</span> PHYSICS & PROCESS</h2>
+                <p class="text-gray-400 font-mono text-sm border-l-4 border-fuchsia-500 pl-3">
+                    Von Ordnung zu Chaos: Der Tintentropfen im Wasser.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 h-auto">
+                
+                <div class="cyber-panel p-6 flex flex-col gap-4">
+                    <div class="border-b border-gray-700 pb-2 mb-2">
+                        <h3 class="text-xl font-bold text-fuchsia-400">1. Forward Process (q)</h3>
+                        <p class="text-xs text-gray-500 font-mono uppercase">Systematische Zerstörung</p>
+                    </div>
+                    
+                    <p class="text-sm text-gray-300">
+                        Wir fügen über <strong class="text-white">1000 Schritte (T)</strong> langsam <strong class="text-cyan-400">Gauß-Rauschen</strong> hinzu.
+                    </p>
+                    
+                    <div class="bg-black p-3 rounded border border-gray-700">
+                        <p class="text-[10px] text-gray-500 mb-1 font-mono text-center">DIE ZERSTÖRUNGS-FORMEL:</p>
+                        <div class="flex justify-center my-2">
+                            <img src="https://latex.codecogs.com/svg.latex?x_t=\sqrt{\bar{\alpha}_t}x_0+\sqrt{1-\bar{\alpha}_t}\epsilon" class="math-block" style="height: 1.8em;">
+                        </div>
+                        <div class="space-y-2 mt-3">
+                            <div class="flex items-start gap-2 text-xs font-mono">
+                                <span class="text-fuchsia-400 font-bold min-w-[20px]">x0</span>
+                                <span class="text-gray-400">Das Originalbild (RGB).</span>
+                            </div>
+                            <div class="flex items-start gap-2 text-xs font-mono">
+                                <span class="text-cyan-400 font-bold min-w-[20px]">ε</span>
+                                <span class="text-gray-400">Gaussian Noise <img src="https://latex.codecogs.com/svg.latex?\mathcal{N}(0,I)" class="math-inline">. Zufallswerte aus der Normalverteilung (Glockenkurve).</span>
+                            </div>
+                            <div class="flex items-start gap-2 text-xs font-mono">
+                                <span class="text-yellow-400 font-bold min-w-[20px]">α</span>
+                                <span class="text-gray-400"><strong>Noise Scheduler:</strong> Der Fahrplan. Regelt, wie viel Signal vs. Rauschen im Bild ist.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="highlight-box">
+                        <p class="text-xs text-gray-300 italic">
+                            "Warum 1000 kleine Schritte? Weil es leichter ist, einen Berg in kleinen Schritten herabzusteigen, als herunterzuspringen."
+                        </p>
+                    </div>
+                </div>
+
+                <div class="cyber-panel p-6 flex flex-col gap-4">
+                    <div class="border-b border-gray-700 pb-2 mb-2">
+                        <h3 class="text-xl font-bold text-cyan-400">2. Reverse Process (p)</h3>
+                        <p class="text-xs text-gray-500 font-mono uppercase">KI lernt die Rekonstruktion</p>
+                    </div>
+
+                    <p class="text-sm text-gray-300">
+                        Das Modell sieht ein verrauschtes Bild <img src="https://latex.codecogs.com/svg.latex?x_t" class="math-inline"> und muss raten: "Wie sah das Rauschen aus?"
+                    </p>
+
+                    <div class="bg-fuchsia-900/20 border border-fuchsia-500/50 p-4 rounded text-center">
+                        <strong class="text-white text-sm block mb-2">Der Clou:</strong>
+                        <p class="text-xs text-gray-300 mb-2">Wir sagen nicht "Mal das Bild", sondern:</p>
+                        <p class="text-fuchsia-300 font-mono text-sm">"Sag mir das Rauschen (ε) voraus!"</p>
+                        
+                        <div class="mt-3 pt-3 border-t border-fuchsia-500/30">
+                            <p class="text-[10px] text-gray-400 mb-1">LOSS FUNCTION (MSE):</p>
+                            <img src="https://latex.codecogs.com/svg.latex?L=||\epsilon-\epsilon_\theta(x_t,t)||^2" class="math-block" style="height: 1.5em;">
+                            <p class="text-[10px] text-gray-500 mt-1">Vergleich: Echtes Rauschen vs. Vorhergesagtes Rauschen</p>
+                        </div>
+                    </div>
+
+                    <div class="text-xs font-mono text-gray-400 space-y-2 mt-2">
+                        <p><strong>Training:</strong> Wähle zufälliges Bild - Forward Process - Wähle zufälligen Zeitschritt <span class="text-yellow-400">t</span>- Reverse Process & entferne <span class="text-cyan-400">ε</span>.</p>
+                        <p><strong>Sampling (Generierung):</strong> Starte bei purem Rauschen (<span class="text-white">xT</span>). Entferne Rauschen schrittweise bis <span class="text-fuchsia-400">x0</span>.</p>
+                    </div>
+                </div>
+
+                <div class="cyber-panel p-6 flex flex-col items-center justify-center bg-black/40">
+                    <h3 class="font-mono text-white mb-4 w-full border-b border-gray-700 pb-2 text-center">/// NOISE SIMULATOR</h3>
+                    <div class="relative w-full aspect-square max-w-[300px] bg-black border border-gray-700 mb-4 overflow-hidden shadow-[0_0_20px_rgba(0,243,255,0.1)]">
+                        <canvas id="diffusionCanvas" width="400" height="400" class="absolute top-0 left-0 w-full h-full"></canvas>
+                        <div class="absolute bottom-2 left-2 bg-black/70 px-2 py-1 text-xs font-mono text-cyan-400 border border-cyan-500/30">
+                            t: <span id="timeStepVal">0</span> / 1000
+                        </div>
+                    </div>
+                    <div class="w-full max-w-[300px]">
+                        <div class="flex justify-between text-[10px] font-mono text-gray-500 mb-1">
+                            <span>x_0 (Signal)</span>
+                            <span>x_T (Noise)</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="0" id="noiseSlider" class="w-full">
+                        <p class="text-[10px] text-center mt-3 text-gray-500">Bewege den Slider, um den Forward Process zu simulieren.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="unet" class="min-h-screen pt-12 max-w-6xl mx-auto space-y-8 hidden">
+            <div class="mb-6">
+                <h2 class="text-4xl font-bold text-white mb-2"><span class="text-cyan-400">03 //</span> THE ARCHITECT: UNET</h2>
+                <p class="text-gray-400 font-mono text-sm border-l-4 border-cyan-500 pl-3">Das neuronale Netz, das Rauschen sieht und Struktur findet.</p>
+            </div>
+
+            <div class="cyber-panel p-8">
+                <h3 class="font-mono text-cyan-400 mb-6">/// ARCHITECTURE_BLUEPRINT</h3>
+                
+                <div class="relative max-w-4xl mx-auto p-4">
+                    <div class="flex justify-between mb-8 font-mono text-sm">
+                        <div class="bg-gray-800 border border-white p-2 text-white w-32 text-center rounded">Input <img src="https://latex.codecogs.com/svg.latex?x_t" class="math-inline"></div>
+                        <div class="bg-gray-800 border border-white p-2 text-white w-32 text-center rounded">Output <img src="https://latex.codecogs.com/svg.latex?\epsilon" class="math-inline"></div>
+                    </div>
+
+                    <div class="flex justify-between items-stretch h-[400px] relative">
+                        <div class="flex flex-col justify-start gap-4 w-1/4">
+                            <div class="bg-black border border-red-500 text-red-400 p-4 rounded text-center h-24 flex items-center justify-center shadow-lg relative">
+                                Downsampling 1
+                                <div class="absolute -right-[150%] top-1/2 h-[2px] w-[150%] bg-gray-600 border-t border-dashed border-gray-400" title="Skip Connection"></div>
+                                <span class="absolute -right-[70%] top-[-10px] text-[10px] text-gray-500 font-mono">Skip Connection</span>
+                            </div>
+                            <div class="bg-black border border-red-500 text-red-400 p-4 rounded text-center h-24 flex items-center justify-center shadow-lg relative">
+                                Downsampling 2
+                                <div class="absolute -right-[150%] top-1/2 h-[2px] w-[150%] bg-gray-600 border-t border-dashed border-gray-400"></div>
+                            </div>
+                            <div class="bg-black border border-red-500 text-red-400 p-4 rounded text-center h-24 flex items-center justify-center shadow-lg relative">
+                                Downsampling 3
+                                <div class="absolute -right-[150%] top-1/2 h-[2px] w-[150%] bg-gray-600 border-t border-dashed border-gray-400"></div>
+                            </div>
+                            <div class="text-center text-red-500 text-2xl mt-2">⬇</div>
+                        </div>
+
+                        <div class="flex flex-col justify-center items-center w-1/4 gap-4 opacity-70"></div>
+
+                        <div class="flex flex-col justify-start gap-4 w-1/4">
+                            <div class="bg-black border border-blue-500 text-blue-400 p-4 rounded text-center h-24 flex items-center justify-center shadow-lg">Upsampling 1</div>
+                            <div class="bg-black border border-blue-500 text-blue-400 p-4 rounded text-center h-24 flex items-center justify-center shadow-lg">Upsampling 2</div>
+                            <div class="bg-black border border-blue-500 text-blue-400 p-4 rounded text-center h-24 flex items-center justify-center shadow-lg">Upsampling 3</div>
+                            <div class="text-center text-blue-500 text-2xl mt-2">⬆</div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-center -mt-8 relative z-10">
+                        <div class="bg-gray-900 border-2 border-fuchsia-500 text-fuchsia-400 p-6 rounded-xl shadow-[0_0_20px_rgba(188,19,254,0.4)] w-1/2 text-center font-bold">
+                            BOTTLENECK
+                            <div class="text-[10px] text-gray-400 font-normal mt-1">Komprimierteste Information</div>
+                            <div class="flex justify-center gap-2 mt-2">
+                                <span class="bg-yellow-900/50 text-yellow-500 text-[10px] px-2 py-1 rounded border border-yellow-700">Time Embed</span>
+                                <span class="bg-green-900/50 text-green-500 text-[10px] px-2 py-1 rounded border border-green-700">Text Prompt</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 bg-black/30 p-4 border-l-4 border-gray-500 text-sm text-gray-400">
+                    <strong class="text-white">Skip Connections (Graue Linien):</strong> Sie kopieren Details (Kanten) direkt vom Encoder zum Decoder, da diese im Bottleneck verloren gehen würden. Unverzichtbar für scharfe Bilder.
+                </div>
+            </div>
+        </section>
+
+        <section id="stablediff" class="min-h-screen pt-12 max-w-6xl mx-auto space-y-8 hidden">
+            <div class="mb-6">
+                <h2 class="text-4xl font-bold text-white mb-2"><span class="text-cyan-400">04 //</span> STABLE DIFFUSION</h2>
+                <p class="text-gray-400 font-mono text-sm border-l-4 border-cyan-500 pl-3">Effizienz durch Latent Space & Textsteuerung via CLIP.</p>
+            </div>
+
+            <div class="cyber-panel p-6">
+                 <h3 class="text-xl font-bold text-white mb-4">Das "Latent Diffusion" Upgrade</h3>
+                 <p class="text-gray-300 text-sm mb-6">Wir arbeiten nicht auf Pixeln (zu langsam), sondern im <strong>Latent Space</strong>.</p>
+                 <div class="flex flex-col md:flex-row items-center justify-between gap-2 text-center font-mono text-xs md:text-sm">
+                     <div class="bg-gray-800 p-4 w-full border border-gray-600 rounded">
+                        <div class="text-xl mb-1">🖼️</div> Pixel Space<br><span class="text-red-400">~800k Werte</span>
+                    </div>
+                     <div class="text-cyan-500 text-2xl font-bold">➡ VAE ➡</div>
+                     <div class="bg-fuchsia-900/40 p-6 w-full border-2 border-fuchsia-500 shadow-[0_0_20px_rgba(188,19,254,0.3)] rounded relative">
+                        <div class="absolute top-0 right-0 bg-fuchsia-600 text-white text-[9px] px-2">FAST</div>
+                        <div class="text-xl mb-1">📦</div> Latent Space<br><span class="text-green-400">~16k Werte (48x kleiner!)</span>
+                    </div>
+                     <div class="text-cyan-500 text-2xl font-bold">➡ VAE ➡</div>
+                     <div class="bg-gray-800 p-4 w-full border border-gray-600 rounded">
+                        <div class="text-xl mb-1">🖼️</div> Pixel Space
+                    </div>
+                 </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="cyber-panel p-6 border-t-2 border-green-500">
+                    <h3 class="text-lg font-bold text-green-400 mb-2">Text Control (CLIP)</h3>
+                    <ul class="text-xs text-gray-400 space-y-2 font-mono">
+                        <li><strong>CLIP Encoder:</strong> Text zu Vektoren.</li>
+                        <li><strong>Cross-Attention:</strong> Die Brücke im UNet.</li>
+                        <li class="bg-black p-2 border border-gray-700 italic">Query (Bild) fragt Key (Text): "Was soll ich sein?"</li>
+                    </ul>
+                </div>
+                <div class="cyber-panel p-6 border-t-2 border-yellow-500">
+                    <h3 class="text-lg font-bold text-yellow-400 mb-2">Guidance Scale (CFG)</h3>
+                    <p class="text-sm text-gray-300 mb-3">Der Regler für "Kreativität" vs "Prompt-Treue".</p>
+                    <div class="bg-black/50 p-2 rounded mb-2">
+                        <img src="https://latex.codecogs.com/svg.latex?\hat{\epsilon}=\epsilon_{uncond}+w(\epsilon_{cond}-\epsilon_{uncond})" class="math-inline" style="height:1.2em">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="comparison" class="min-h-screen pt-12 max-w-5xl mx-auto space-y-8 hidden">
+            <div class="mb-6">
+                <h2 class="text-4xl font-bold text-white mb-2"><span class="text-fuchsia-400">05 //</span> THE SHOWDOWN</h2>
+                <p class="text-gray-400 font-mono text-sm border-l-4 border-fuchsia-500 pl-3">Diffusion Models vs. GANs</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div class="chart-container cyber-panel p-4">
+                    <h3 class="font-mono text-xs text-gray-500 mb-2">/// PERFORMANCE_METRICS</h3>
+                    <canvas id="radarChart"></canvas>
+                </div>
+                <div class="space-y-6">
+                    <div class="cyber-panel p-5 border-l-4 border-red-500 bg-red-900/5 relative overflow-hidden">
+                        <div class="absolute right-0 top-0 text-red-500/10 text-6xl font-bold pointer-events-none">GAN</div>
+                        <h4 class="font-bold text-red-400 mb-2 flex items-center">
+                            <span class="mr-2">⚔️</span> GANs (Generative Adversarial Networks)
+                        </h4>
+                        <ul class="text-sm text-gray-300 list-disc list-inside space-y-2">
+                            <li><strong>Instabil:</strong> Das "Katze-Maus"-Spiel zwischen Generator und Discriminator ist schwer zu balancieren.</li>
+                            <li><strong class="text-red-400">Mode Collapse:</strong> Die KI wird "faul" und generiert immer wieder das gleiche (einfache) Bild.</li>
+                            <li><span class="text-green-400">Vorteil:</span> Extrem schnell (One-Shot Generierung).</li>
+                        </ul>
+                    </div>
+
+                    <div class="cyber-panel p-5 border-l-4 border-cyan-500 bg-cyan-900/10 relative overflow-hidden">
+                        <div class="absolute right-0 top-0 text-cyan-500/10 text-6xl font-bold pointer-events-none">DIFF</div>
+                        <h4 class="font-bold text-cyan-400 mb-2 flex items-center">
+                            <span class="mr-2">🌊</span> Diffusion Models
+                        </h4>
+                        <ul class="text-sm text-gray-300 list-disc list-inside space-y-2">
+                            <li><strong>Stabil:</strong> Einfaches Training durch MSE Loss (Konvexe Optimierung). Funktioniert "einfach".</li>
+                            <li><strong class="text-cyan-400">Distribution Coverage:</strong> Keine Mode Collapse. Erfasst die volle Vielfalt der Trainingsdaten.</li>
+                            <li><span class="text-yellow-400">Nachteil:</span> Langsam (1000 Schritte). <br><span class="text-xs text-gray-500 ml-5">Lösung: DDIM (Abkürzungen auf ~50 Schritte).</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="simulation" class="min-h-screen pt-12 max-w-5xl mx-auto space-y-8 hidden">
+            <div class="mb-6">
+                <h2 class="text-4xl font-bold text-white mb-2"><span class="text-cyan-400">06 //</span> PROMPTING TERMINAL</h2>
+                <p class="text-gray-400 font-mono text-sm border-l-4 border-cyan-500 pl-3">
+                    Interaktive Demo: Wie steuert CFG das Ergebnis? 
+                </p>
+            </div>
+
+            <div class="cyber-panel p-6 max-w-3xl mx-auto border-t-4 border-fuchsia-500">
+                <div class="flex items-center justify-between mb-4 border-b border-gray-700 pb-2">
+                    <h3 class="font-mono text-cyan-400">/// STABLE_DIFFUSION_INTERFACE_MOCK</h3>
+                    <span class="animate-pulse text-green-500 text-xs">● GPU CONNECTED</span>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-mono text-gray-500 mb-1">PROMPT (POSITIVE)</label>
+                        <input type="text" id="simPrompt" value="Cyberpunk city, neon lights, rain, highly detailed" class="w-full bg-black border border-gray-600 text-white p-2 font-mono text-sm focus:border-cyan-500 outline-none">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-mono text-gray-500 mb-1">
+                                CFG SCALE (GUIDANCE): <span id="cfgValDisplay" class="text-white font-bold">7.0</span>
+                            </label>
+                            <input type="range" min="1" max="25" step="0.5" value="7" id="simCfgSlider">
+                            <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                                <span>1 (Frei)</span>
+                                <span>7 (Normal)</span>
+                                <span>20 (Strikt)</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono text-gray-500 mb-1">STEPS: 20 (DDIM)</label>
+                            <div class="w-full bg-gray-800 h-2 rounded mt-3 overflow-hidden">
+                                <div class="bg-cyan-500 h-full w-full rounded animate-pulse"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="runSimulation()" class="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3 font-mono tracking-widest mt-4 transition-colors shadow-[0_0_15px_rgba(188,19,254,0.5)]">
+                        GENERATE IMAGE
+                    </button>
+                </div>
+
+                <div id="simOutput" class="mt-6 p-4 border-2 border-dashed border-gray-600 min-h-[120px] flex items-center justify-center bg-black/50 text-center hidden">
+                </div>
+            </div>
+            
+            <div class="mt-8 text-center">
+                <p class="text-gray-400 font-mono text-sm bg-black/40 inline-block px-4 py-2 border border-gray-600">
+                    💡 <strong>Publikumsfrage:</strong> "Was passiert wohl mit dem Bild, wenn wir den CFG-Wert auf 20 erhöhen?"
+                </p>
+            </div>
+        </section>
+
+        <section id="summary" class="min-h-screen pt-12 max-w-5xl mx-auto space-y-8 hidden">
+             <div class="mb-6">
+                <h2 class="text-4xl font-bold text-white mb-2"><span class="text-fuchsia-400">07 //</span> FAZIT & AUSBLICK</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="cyber-panel p-8">
+                    <h3 class="text-xl font-bold text-white mb-6 border-b border-gray-700 pb-2">Key Takeaways</h3>
+                    <ul class="space-y-4 text-gray-300">
+                        <li><span class="text-fuchsia-400 mr-2">01.</span> <strong>Forward & Reverse:</strong> Zerstören & Reparieren.</li>
+                        <li><span class="text-fuchsia-400 mr-2">02.</span> <strong>Stable Diffusion:</strong> Latent Space + CLIP.</li>
+                        <li class="flex items-start"><span class="text-green-400 mr-2 font-mono">03.</span> 
+                            <span><strong>Dominanz:</strong> Qualität & Diversität schlagen reine Geschwindigkeit.</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="cyber-panel p-8 border-t-4 border-fuchsia-500">
+                    <h3 class="text-xl font-bold text-fuchsia-400 mb-4">The Future is Generative</h3>
+                    <p class="text-sm text-gray-300 mb-4">Wir kratzen erst an der Oberfläche. Die Prinzipien der Diffusion wandern jetzt in:</p>
+                    <div class="space-y-3 font-mono text-xs md:text-sm">
+                        <div class="bg-black p-3 border border-gray-700 flex justify-between items-center">
+                            <span>🎥 Video (Sora / Kling)</span> 
+                            <span class="text-green-500 bg-green-900/30 px-2 py-1 rounded">ONLINE</span>
+                        </div>
+                        <div class="bg-black p-3 border border-gray-700 flex justify-between items-center">
+                            <span>🧊 3D Asset Gen</span> 
+                            <span class="text-blue-500 bg-blue-900/30 px-2 py-1 rounded">BETA</span>
+                        </div>
+                        <div class="bg-black p-3 border border-gray-700 flex justify-between items-center">
+                            <span>⚡ Realtime (Distillation)</span> 
+                            <span class="text-yellow-500 bg-yellow-900/30 px-2 py-1 rounded">RESEARCH</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-12 animate-pulse">
+                <p class="text-2xl text-white font-bold font-mono">/// END OF PRESENTATION</p>
+                <p class="text-sm text-gray-500">Vielen Dank für die Aufmerksamkeit.</p>
+            </div>
+        </section>
+
+        <section id="references" class="min-h-screen pt-12 max-w-5xl mx-auto space-y-8 hidden">
+            <div class="mb-6">
+                <h2 class="text-4xl font-bold text-white mb-2"><span class="text-fuchsia-400">08 //</span> QUELLEN</h2>
+            </div>
+            <div class="cyber-panel p-8">
+                <ul class="text-xs md:text-sm text-gray-400 space-y-4 font-mono">
+                    <li class="pl-4 border-l-2 border-fuchsia-500">
+                        <strong>[1]</strong> R. Rombach et al., "High-Resolution Image Synthesis with Latent Diffusion Models," in <em>Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)</em>, 2022, pp. 10684–10695.
+                    </li>
+                    <li class="pl-4 border-l-2 border-gray-700">
+                        <strong>[2]</strong> J. Ho, A. Jain, and P. Abbeel, "Denoising Diffusion Probabilistic Models," in <em>Adv. Neural Inf. Process. Syst. (NeurIPS)</em>, vol. 33, pp. 6840–6851, 2020.
+                    </li>
+                    <li class="pl-4 border-l-2 border-gray-700">
+                        <strong>[3]</strong> O. Ronneberger, P. Fischer, and T. Brox, "U-Net: Convolutional Networks for Biomedical Image Segmentation," in <em>Medical Image Computing and Computer-Assisted Intervention (MICCAI)</em>, Springer, 2015, pp. 234–241.
+                    </li>
+                    <li class="pl-4 border-l-2 border-gray-700">
+                        <strong>[4]</strong> F.-A. Croitoru, V. Hondru, R. T. Ionescu, and M. Shah, "Diffusion Models in Vision: A Survey," <em>IEEE Trans. Pattern Anal. Mach. Intell.</em>, vol. 45, no. 9, pp. 10850–10869, Sep. 2023.
+                    </li>
+                    <li class="pl-4 border-l-2 border-gray-700">
+                        <strong>[5]</strong> M. Katzlberger. "Stable Diffusion – Verständlich erklärt." Katzlberger.ai. Available: https://katzlberger.ai/2022/10/24/stable-diffusion-verstaendlich-erklaert/. (accessed: Nov. 30, 2025).
+                    </li>
+                    <li class="pl-4 border-l-2 border-gray-700">
+                        <strong>[6]</strong> R. O'Connor. "Introduction to Diffusion Models for Machine Learning." AssemblyAI. Available: https://www.assemblyai.com/blog/diffusion-models-for-machine-learning-introduction. (accessed: Nov. 30, 2025).
+                    </li>
+                    <li class="pl-4 border-l-2 border-gray-700">
+                        <strong>[7]</strong> Polo Club of Data Science. "Diffusion Explainer." GitHub. Available: https://poloclub.github.io/diffusion-explainer/. (accessed: Nov. 30, 2025).
+                    </li>
+                    <li class="pl-4 border-l-2 border-gray-700">
+                        <strong>[8]</strong> Data Science Collective. "A Beginner’s Visual Guide to Diffusion Models." Medium. Available: https://medium.com/data-science-collective/beginners-visual-guide-to-diffusion-models-6cfa467f3fab. (accessed: Nov. 30, 2025).
+                    </li>
+                    <li class="pl-4 border-l-2 border-gray-700">
+                        <strong>[9]</strong>Gemini (Google) Generatives Sprachmodell (Coding Assistant). Erstellung des HTML/CSS-Codes und Formatierung der Inhalte basierend auf dem bereitgestellten Skript. (accessed: Nov. 30, 2025)
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+    </main>
+
+<script>
+    const speakers = {
+        // Matrikelnummern und Farben (Anisa=Fuchsia/Lila, Daniel=Cyan/Blau)
+        'Anisa': { fullName: 'Anisa Chakiri', initial: 'A', color: '#bc13fe', role: 'Intro, Physics, Comparison', image: 'anisa.jpg', matricleId: '883796' },
+        'Daniel': { fullName: 'Daniel Deitschmann', initial: 'D', color: '#00f3ff', role: 'Architecture, Stable Diffusion', image: 'daniel.jpg', matricleId: '851335' }
+    };
+
+    const sectionMap = {
+        'intro': { speaker: 'Anisa', topic: 'Genesis' },
+        'physics': { speaker: 'Anisa', topic: 'Forward & Reverse' },
+        'unet': { speaker: 'Daniel', topic: 'UNet Architecture' },
+        'stablediff': { speaker: 'Daniel', topic: 'Latent Space & CLIP' },
+        'comparison': { speaker: 'Anisa', topic: 'Diffusion vs GANs' },
+        'simulation': { speaker: 'Daniel', topic: 'Interactive Prompting' }, 
+        'summary': { speaker: 'Anisa', topic: 'Fazit & Ausblick' },
+        'references': { speaker: 'Anisa', topic: 'Quellenverzeichnis' }
+    };
+
+    let radarChart = null;
+
+    function navTo(sectionId) {
+        const allSections = document.querySelectorAll('main > section');
+        allSections.forEach(sec => {
+            sec.classList.add('hidden');
+            sec.classList.remove('animate-fade-in');
+        });
+
+        const target = document.getElementById(sectionId);
+        if(target) {
+            target.classList.remove('hidden');
+            target.classList.add('animate-fade-in');
+        }
+
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById('btn-' + sectionId);
+        if (activeBtn) activeBtn.classList.add('active');
+        
+        updateSpeakerInfo(sectionId);
+
+        if (sectionId === 'comparison') setTimeout(renderRadarChart, 100);
+        
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) {
+            sidebar.classList.add('-translate-x-full');
+        }
+    }
+
+    function updateSpeakerInfo(sectionId) {
+        const info = sectionMap[sectionId];
+        const speakerData = speakers[info.speaker];
+        const avatar = document.getElementById('speaker-avatar');
+        const nameEl = document.getElementById('speaker-name');
+        const idEl = document.getElementById('speaker-id'); 
+        const roleEl = document.getElementById('speaker-role');
+        const topicEl = document.getElementById('current-topic');
+
+        // Update Image Src und Starker Neon-Glow
+        avatar.src = speakerData.image;
+        avatar.style.borderColor = speakerData.color;
+        avatar.style.boxShadow = `0 0 5px ${speakerData.color}, 0 0 20px ${speakerData.color}`;
+        
+        nameEl.innerText = speakerData.fullName;
+        nameEl.style.color = speakerData.color;
+        
+        // KORREKTUR: Matrikelnummer/ID jetzt beides in text-gray-500
+        idEl.innerHTML = `<span class="text-gray-500">ID: ${speakerData.matricleId}</span>`;
+
+        topicEl.innerText = info.topic;
+        
+        roleEl.style.animation = 'none';
+        roleEl.offsetHeight; 
+        roleEl.style.animation = 'pulse-speaker 2s infinite';
+    }
+
+    function renderRadarChart() {
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        if (radarChart) radarChart.destroy();
+        radarChart = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['Bildqualität', 'Diversität', 'Trainings-Stabilität', 'Geschwindigkeit', 'Einfachheit'],
+                datasets: [{
+                    label: 'Diffusion Models', data: [95, 95, 90, 40, 70], fill: true, backgroundColor: 'rgba(0, 243, 255, 0.2)', borderColor: '#00f3ff', pointRadius: 4
+                }, {
+                    label: 'GANs', data: [80, 50, 30, 95, 50], fill: true, backgroundColor: 'rgba(188, 19, 254, 0.2)', borderColor: '#bc13fe', pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { r: { angleLines: { color: '#333' }, grid: { color: '#333' }, pointLabels: { color: '#e0e0e0', font: { family: 'Rajdhani', size: 12 } }, ticks: { display: false, max: 100 } } },
+                plugins: { legend: { labels: { color: '#fff', font: { family: 'JetBrains Mono' } } } }
+            }
+        });
+    }
+
+    const canvas = document.getElementById('diffusionCanvas');
+    const ctx = canvas.getContext('2d');
+    const noiseSlider = document.getElementById('noiseSlider');
+    const timeStepVal = document.getElementById('timeStepVal');
+    
+    function drawBaseShape() {
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Farben des Demo-Shapes: Daniel/Cyan (Blau) und Anisa/Fuchsia (Lila)
+        ctx.beginPath(); ctx.arc(200, 200, 100, 0, 2 * Math.PI); ctx.fillStyle = '#00f3ff'; ctx.fill();
+        ctx.beginPath(); ctx.rect(150, 150, 100, 100); ctx.fillStyle = '#bc13fe'; ctx.globalCompositeOperation = 'difference'; ctx.fill(); ctx.globalCompositeOperation = 'source-over';
+        ctx.font = "30px Rajdhani"; ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.fillText("DATA x0", 200, 350);
+    }
+
+    function addNoise(amount) {
+        drawBaseShape();
+        if (amount <= 0) return;
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const factor = amount / 100; 
+        const originalWeight = 1 - factor; 
+
+        for (let i = 0; i < data.length; i += 4) {
+            const noiseR = Math.random() * 255;
+            const noiseG = Math.random() * 255;
+            const noiseB = Math.random() * 255;
+            data[i] = data[i] * originalWeight + noiseR * factor;     // R
+            data[i+1] = data[i+1] * originalWeight + noiseG * factor; // G
+            data[i+2] = data[i+2] * originalWeight + noiseB * factor; // B
+        }
+        ctx.putImageData(imageData, 0, 0);
+    }
+    
+    drawBaseShape();
+    noiseSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        timeStepVal.innerText = Math.floor(val * 10);
+        requestAnimationFrame(() => addNoise(val));
+    });
+
+    const simCfgSlider = document.getElementById('simCfgSlider');
+    const cfgValDisplay = document.getElementById('cfgValDisplay');
+    const simOutput = document.getElementById('simOutput');
+
+    simCfgSlider.addEventListener('input', (e) => {
+        cfgValDisplay.innerText = parseFloat(e.target.value).toFixed(1);
+    });
+
+    function runSimulation() {
+        const prompt = document.getElementById('simPrompt').value;
+        const cfg = parseFloat(simCfgSlider.value);
+        
+        simOutput.classList.remove('hidden');
+        simOutput.innerHTML = '<span class="animate-pulse text-cyan-400">DIFFUSING LATENT SPACE... (20 Steps)</span>';
+
+        setTimeout(() => {
+            let resultText = "";
+            let styleColor = "text-white";
+
+            if (cfg < 3) {
+                resultText = "⚠️ ERGEBNIS: Sehr kreativ, aber chaotisch. Ignoriert den Prompt teilweise.";
+                styleColor = "text-yellow-400";
+            } else if (cfg >= 3 && cfg <= 12) {
+                resultText = "✅ ERGEBNIS: Perfekte Balance. Scharfes Bild, folgt dem Prompt 'Cyberpunk city'.";
+                styleColor = "text-green-400";
+            } else {
+                resultText = "❌ ERGEBNIS: 'Gebraten' (Fried). Übersättigte Farben, Artefakte, unnatürlicher Kontrast.";
+                styleColor = "text-red-400";
+            }
+            
+            simOutput.innerHTML = `
+                <div class="${styleColor} font-mono text-sm">
+                    <strong>${resultText}</strong><br><br>
+                    <span class="text-gray-500 text-xs">Formel-Logik: 
+                       <img src="https://latex.codecogs.com/svg.latex?\\hat{\\epsilon}=\\epsilon_{uncond}+${cfg}\\cdot(\\epsilon_{cond}-\\epsilon_{uncond})" class="math-inline" style="height: 1.5em; vertical-align:middle; filter: invert(1);">
+                    </span>
+                </div>
+            `;
+        }, 1000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        navTo('intro');
+        document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        });
+    });
+
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; opacity: 0; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    `;
+    document.head.appendChild(style);
+</script>
+</body>
+</html>

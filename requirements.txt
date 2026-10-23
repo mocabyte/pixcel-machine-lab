@@ -1,0 +1,25 @@
+# Pixcel Machine Lab — dependencies
+# Python 3.10–3.12.  Install with:  pip install -r requirements.txt
+
+# --- core, needed by every lab ---------------------------------------------
+numpy>=1.26,<3
+opencv-python>=4.9
+
+# --- detection and tracking (Lab 04, Lab 05) -------------------------------
+ultralytics>=8.3          # YOLO + ByteTrack
+torch>=2.2                # installed as an ultralytics dependency; pinned
+                          # here so you can choose a CUDA build yourself
+                          # see https://pytorch.org/get-started/locally/
+
+# --- landmarks (gesture lab) -----------------------------------------------
+mediapipe>=0.10.18
+
+# --- 3D (digital twin lab) -------------------------------------------------
+open3d>=0.18
+
+# --- plotting and notebooks ------------------------------------------------
+matplotlib>=3.8
+pillow>=10.0
+
+# Apple Silicon note: torch uses the 'mps' backend automatically; common.py
+# detects it. open3d wheels for arm64 Macs require Python <=3.12.

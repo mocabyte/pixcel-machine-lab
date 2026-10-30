@@ -27,6 +27,7 @@ results land in `output/`. Tested October 2026 on Python 3.13.
 | `yolo_challenge.py` | YOLO on everyday vs. anti-vision images | `data/` |
 | `creative-object-tracker.py` | tracking = detection + stable IDs | `data/cat.mp4` |
 | `gesture_recognition_basics.py` | hand landmarks → gestures, face landmarks | webcam or a video path |
+| `mediapipe_challenge.py` | Hide or Haunt: fool face and gesture models, log every attempt | webcam, image, folder or video |
 | `gan_fake_digits.py` | a GAN learns to draw digits | MNIST (auto-download) |
 | `mini_digital_twin.py` | two scans → aligned, merged, meshed, compared | `data/elephant.ply` |
 

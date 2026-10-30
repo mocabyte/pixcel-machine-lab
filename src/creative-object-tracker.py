@@ -1,24 +1,29 @@
 """
-object_tracker_creative_full.py  — OOP Tracking Template
-Modern Object Tracking with YOLOv8 + ByteTrack + Supervision (>= 0.26)
+creative-object-tracker.py  — OOP Tracking Template
+Object Tracking with YOLO + ByteTrack (Ultralytics) + Supervision annotators
 
 Features
 - OOP-Struktur (ModelManager, TrackerPipeline)
-- YOLOv8 + ByteTrack Tracking
-- Labels + Confidence (LabelAnnotator, da supervision>=0.26)
+- YOLO-Detektion + ByteTrack-Tracking, EIN Tracker (der von Ultralytics)
+- Labels mit Track-ID: "#3 cat 0.91" — die ID ist das, was Tracking von Detektion unterscheidet
 - Bewegungs-Heatmap (mit Blur & Overlay auf letztem Frame)
 - Kreative Erweiterungs-Stubs (Confidence Pulse, Motion Vectors, Memory Trail, AI Narrator)
 
+Hinweis: supervision hat sv.ByteTrack entfernt (jetzt im separaten Paket
+`trackers`). Wir brauchen es nicht — model.track() trackt bereits.
+
 Install
-  pip install ultralytics supervision opencv-python numpy
+  pip install -r requirements.txt
 Run
-  python object_tracker_creative_full.py
+  python src/creative-object-tracker.py
 """
 
 from ultralytics import YOLO
 import supervision as sv
 import cv2
 import numpy as np
+
+from common import data_path, get_device
 
 
 # ----------------------------------------------------------
@@ -28,24 +33,25 @@ class ModelManager:
     """
     Verwaltet das Laden verschiedener YOLOv8-Modelle und erklärt den Trade-off.
 
-    YOLOv8 model zoo (Größe → Genauigkeit vs. Geschwindigkeit):
-      - yolov8n.pt  ("nano")     🐇  sehr schnell, geringste Genauigkeit; gut für Echtzeit-Demos
-      - yolov8s.pt  ("small")    ⚖️  guter Mittelweg; oft ideal für Laptops ohne starke GPU
-      - yolov8m.pt  ("medium")   🚗  besser bei kleineren/weiteren Objekten; moderat langsamer
-      - yolov8l.pt  ("large")    🦁  hohe Genauigkeit, spürbar langsamer; bessere Crowd-Szenen
-      - yolov8x.pt  ("x-large")  🐢  beste Genauigkeit, sehr rechenintensiv; für anspruchsvolle Szenen
+    YOLO model zoo (Größe → Genauigkeit vs. Geschwindigkeit), gleich für yolov8 und yolo26:
+      - n ("nano")     🐇  sehr schnell, geringste Genauigkeit; gut für Echtzeit-Demos
+      - s ("small")    ⚖️  guter Mittelweg; oft ideal für Laptops ohne starke GPU
+      - m ("medium")   🚗  besser bei kleineren/weiteren Objekten; moderat langsamer
+      - l ("large")    🦁  hohe Genauigkeit, spürbar langsamer; bessere Crowd-Szenen
+      - x ("x-large")  🐢  beste Genauigkeit, sehr rechenintensiv; für anspruchsvolle Szenen
 
     Merksatz:
       Größer = mehr Parameter/Layer → erkennt kleinste/weit entfernte Objekte stabiler,
       kostet aber FPS (gerade ohne starke GPU).
     """
 
-    def __init__(self, model_size: str = "n"):
+    def __init__(self, model_size: str = "n", family: str = "yolo26"):
         """
         Args:
             model_size: 'n' | 's' | 'm' | 'l' | 'x'
+            family: 'yolo26' (aktuell) oder 'yolov8' (Vergleich mit den Folien)
         """
-        self.model_path = f"yolov8{model_size}.pt"
+        self.model_path = f"{family}{model_size}.pt"
         self.model = YOLO(self.model_path)
         print(f"✅ Loaded YOLO model: {self.model_path}")
 
@@ -82,20 +88,20 @@ class TrackerPipeline:
         self.box_annotator = sv.BoxAnnotator()
         self.label_annotator = sv.LabelAnnotator(text_scale=0.6, text_thickness=1)
 
-        self.tracker = sv.ByteTrack()
+        self.device = get_device()
 
         # Buffer für Auswertungen/Visualisierungen
         self.positions = []          # für Heatmap (Zentren)
-        self.last_positions = {}     # für Motion Vectors / Memory Trail
+        self.last_positions = {}     # tracker_id → letzter Mittelpunkt (Motion Vectors)
+        self.trails = {}             # tracker_id → Liste letzter Mittelpunkte (Memory Trail)
 
         print("🚀 TrackerPipeline initialized")
 
     def process_video(self):
         """
         🎬 Hauptloop:
-          - YOLO track (stream)
-          - YOLO-Result → sv.Detections
-          - ByteTrack IDs
+          - YOLO track (stream) → Detektion + ByteTrack-IDs in einem Schritt
+          - YOLO-Result → sv.Detections (inkl. tracker_id)
           - Boxen + Labels zeichnen
           - Creative-Hooks anwenden
           - Am Ende Heatmap erzeugen
@@ -104,31 +110,29 @@ class TrackerPipeline:
         frame_shape = None
         last_frame = None
 
-        for result in self.model.track(source=self.source_path, stream=True, tracker="bytetrack.yaml"):
+        names = self.model.names
+
+        for result in self.model.track(
+            source=self.source_path, stream=True, tracker="bytetrack.yaml",
+            persist=True, device=self.device, verbose=False,
+        ):
             frame = result.orig_img
             last_frame = frame.copy()
             frame_shape = frame.shape
 
-            # Kein Ergebnis in diesem Frame → trotzdem anzeigen
-            if result.boxes is None:
-                self._display_frame(frame)
+            # --- YOLO-Result → Supervision Detections (bringt tracker_id mit) ---
+            tracked = sv.Detections.from_ultralytics(result)
+
+            # Noch keine bestätigten Tracks in diesem Frame → trotzdem anzeigen
+            if len(tracked) == 0 or tracked.tracker_id is None:
+                if not self._display_frame(frame):
+                    break
                 continue
 
-            # --- YOLO → Supervision Detections ---
-            detections = sv.Detections(
-                xyxy=result.boxes.xyxy.cpu().numpy(),
-                confidence=result.boxes.conf.cpu().numpy(),
-                class_id=result.boxes.cls.cpu().numpy().astype(int)
-            )
-
-            # --- Tracker IDs updaten ---
-            tracked = self.tracker.update_with_detections(detections)
-
-            # Labels (z. B. "cat 0.91"). Namen kommen je nach Ultralytics-Version von model.names oder model.model.names
-            names = getattr(self.model, "names", None) or getattr(self.model.model, "names", {})
+            # Labels mit ID, z. B. "#3 cat 0.91"
             labels = [
-                f"{names.get(cid, str(cid))} {conf:.2f}"
-                for cid, conf in zip(tracked.class_id, tracked.confidence)
+                f"#{tid} {names[int(cid)]} {conf:.2f}"
+                for tid, cid, conf in zip(tracked.tracker_id, tracked.class_id, tracked.confidence)
             ]
 
             # 1) Boxen zeichnen
@@ -146,7 +150,10 @@ class TrackerPipeline:
             self._ai_narrator(tracked)
 
             # Anzeige
-            self._display_frame(annotated)
+            if not self._display_frame(annotated):
+                break
+
+        cv2.destroyAllWindows()
 
         # Heatmap am Ende (Overlay auf letztem Frame)
         if frame_shape is not None:
@@ -154,12 +161,10 @@ class TrackerPipeline:
 
         print("✅ Video processing complete.")
 
-    def _display_frame(self, frame):
-        """Zeigt das aktuelle Frame und beendet mit 'q'."""
+    def _display_frame(self, frame) -> bool:
+        """Zeigt das aktuelle Frame. Gibt False zurück, wenn 'q' gedrückt wurde."""
         cv2.imshow("Object Tracking", frame)
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            cv2.destroyAllWindows()
-            exit()
+        return not (cv2.waitKey(1) & 0xFF == ord("q"))
 
     # ----------------------------------------------------------
     # CREATIVE 1 — Heatmap (implementiert, inkl. Blur+Overlay)
@@ -223,7 +228,7 @@ class TrackerPipeline:
         """
         TODO: Bewegungsrichtungen/geschwindigkeit visualisieren.
         Schritte:
-          - für jede ID aktuellen Mittelpunkt berechnen
+          - für jede ID (tracked.tracker_id) aktuellen Mittelpunkt berechnen
           - letzten Mittelpunkt aus self.last_positions nehmen
           - Pfeil (cv2.arrowedLine) alt → neu zeichnen; Farbe je nach Geschwindigkeit
         """
@@ -261,8 +266,8 @@ def main():
     # Model wählen: 'n' | 's' | 'm' | 'l' | 'x'
     model_manager = ModelManager(model_size="n")  # ändere z. B. auf 'x' um Unterschiede zu demonstrieren
 
-    # Videoquelle anpassen
-    source_video = "data/cat.mp4"
+    # Videoquelle anpassen (liegt in data/): cat.mp4, tauben.mp4, shibuya_crossing.MP4
+    source_video = str(data_path("cat.mp4"))
 
     pipeline = TrackerPipeline(model=model_manager.get_model(), source_path=source_video)
     pipeline.process_video()

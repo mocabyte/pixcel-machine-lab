@@ -1,42 +1,54 @@
-# YOLOv8 Challenge — What Does the Machine Really See?
+# YOLO Challenge — What Does the Machine Really See?
+#
+# Part 1: everyday images (dog, horses) — YOLO's comfort zone.
+# Part 2: art and anti-vision images — fashion, hair and make-up designed
+#         to confuse detectors. Compare what you see with what YOLO sees.
 
-from ultralytics import YOLO
-import matplotlib.pyplot as plt
 from pathlib import Path
 
-# --- Settings -----------------------------------------------------
-MODEL = "yolov8n.pt"  # or 'yolov8s.pt', 'yolov8m.pt' for comparison
-IMAGE_DIR = Path("darknet/data")
-SAVE_RESULTS = True    # save annotated images into "runs/" folder
+import cv2
+import matplotlib.pyplot as plt
+from ultralytics import YOLO
 
-# Images to test
+from common import data_path, output_path, get_device
+
+# --- Settings -----------------------------------------------------
+MODEL = "yolo26n.pt"   # current generation; try "yolov8n.pt" to compare with the slides,
+                       # or bigger sizes: s / m / l / x
+CONF = 0.25            # confidence threshold — lower it and watch what appears
+SAVE_RESULTS = True    # save annotated images into output/
+
+# Images to test (all in data/)
 IMAGES = [
-    IMAGE_DIR / "dog.jpg",
-    IMAGE_DIR / "horses.jpg",
-    IMAGE_DIR / "scream.jpg"
+    "dog.jpg",
+    "horses.jpg",
+    "scream.jpg",
+    "anti_vision_fashion.jpg",
+    "anti_vision_hair.jpg",
+    "anti_vision_makeup.png",
 ]
 
 # --- Run YOLO -----------------------------------------------------
-print(f"Loading model: {MODEL}")
+device = get_device()
+print(f"Loading model: {MODEL} on {device}")
 model = YOLO(MODEL)
 
-for img_path in IMAGES:
+for name in IMAGES:
+    img_path = data_path(name)
     print(f"\nProcessing: {img_path.name}")
-    result = model(img_path)[0]  # YOLO returns list; take first item
+    result = model(img_path, conf=CONF, device=device, verbose=False)[0]  # list → first item
 
     # --- Print detections in terminal
-    if not result.boxes:
+    if len(result.boxes) == 0:
         print("No detections found.")
-        continue
-
     for box in result.boxes:
         cls = result.names[int(box.cls)]
         conf = float(box.conf)
         print(f"→ {cls} ({conf:.2f})")
 
     # --- Annotated image (YOLO draws bounding boxes)
-    annotated_bgr = result.plot()            # BGR format (OpenCV style)
-    annotated_rgb = annotated_bgr[:, :, ::-1]  # convert to RGB for Matplotlib
+    annotated_bgr = result.plot()                # BGR format (OpenCV style)
+    annotated_rgb = annotated_bgr[:, :, ::-1]    # convert to RGB for Matplotlib
 
     # --- Show the image
     plt.figure(figsize=(8, 6))
@@ -45,14 +57,13 @@ for img_path in IMAGES:
     plt.axis("off")
     plt.show(block=False)
     plt.pause(5)   # keep open briefly when running in scripts
+    plt.close()
 
-    # --- Optional: save annotated image
+    # --- Optional: save annotated image (cv2 expects BGR)
     if SAVE_RESULTS:
-        save_path = Path("runs") / f"{img_path.stem}_detected.jpg"
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        from imageio.v2 import imwrite
-        imwrite(save_path, annotated_rgb)
+        save_path = output_path(f"{img_path.stem}_detected.jpg")
+        cv2.imwrite(str(save_path), annotated_bgr)
         print(f"Saved: {save_path}")
 
-print("\n✅ YOLOv8 Challenge complete!")
+print("\n✅ YOLO Challenge complete!")
 print("Now reflect: What does the machine really see — and what does it miss?")

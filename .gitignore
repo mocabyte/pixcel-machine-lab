@@ -1,0 +1,9 @@
+# downloaded models and generated results
+models/
+output/
+*.pt
+data/MNIST/
+
+# Python
+__pycache__/
+.venv/

@@ -1,25 +1,34 @@
 # Pixcel Machine Lab — dependencies
-# Python 3.10–3.12.  Install with:  pip install -r requirements.txt
+# Tested October 2026 on Python 3.13. Install inside a virtual environment:
+#   python -m venv .venv
+#   source .venv/bin/activate        (Windows: .venv\Scripts\activate)
+#   pip install -r requirements.txt
+#
+# Upper bounds are deliberate: each one is the next major version that
+# could break the scripts again. Raise them after testing.
 
 # --- core, needed by every lab ---------------------------------------------
-numpy>=1.26,<3
-opencv-python>=4.9
+numpy>=2.0,<3
+# MediaPipe needs opencv-contrib-python, Ultralytics needs opencv-python.
+# Both provide the same `cv2` module — keep them on the same version.
+opencv-python>=5.0,<6
+opencv-contrib-python>=5.0,<6
 
-# --- detection and tracking (Lab 04, Lab 05) -------------------------------
-ultralytics>=8.3          # YOLO + ByteTrack
-torch>=2.2                # installed as an ultralytics dependency; pinned
-                          # here so you can choose a CUDA build yourself
-                          # see https://pytorch.org/get-started/locally/
+# --- detection and tracking (YOLO challenge, creative tracker) -------------
+ultralytics>=8.4,<9      # YOLO26 / YOLOv8 + ByteTrack
+lap>=0.5.12              # needed by Ultralytics' ByteTrack
+supervision>=0.31,<0.32  # annotators only (sv.ByteTrack no longer exists)
+torch>=2.6               # for a CUDA build see https://pytorch.org/get-started/locally/
+torchvision>=0.21        # MNIST for the GAN lab
 
-# --- landmarks (gesture lab) -----------------------------------------------
-mediapipe>=0.10.18
+# --- landmarks and gestures (gesture lab) ----------------------------------
+mediapipe>=1.1,<2        # Tasks API; the old mp.solutions is gone
 
 # --- 3D (digital twin lab) -------------------------------------------------
-open3d>=0.18
+open3d>=0.20,<0.21
 
-# --- plotting and notebooks ------------------------------------------------
+# --- plotting ---------------------------------------------------------------
 matplotlib>=3.8
 pillow>=10.0
 
-# Apple Silicon note: torch uses the 'mps' backend automatically; common.py
-# detects it. open3d wheels for arm64 Macs require Python <=3.12.
+# Apple Silicon: torch uses the 'mps' backend; src/common.py detects it.

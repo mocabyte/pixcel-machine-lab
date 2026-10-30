@@ -2,7 +2,9 @@
 import numpy as np                # NumPy for numerical operations and arrays
 import matplotlib.pyplot as plt   # For visualizing images and data
 from PIL import Image             # For opening image files
-import cv2                        # OpenCV library (not yet used here)
+import cv2                        # OpenCV library (used at the end: BGR vs RGB)
+
+from common import data_path
 
 # --- NumPy Basics: Arrays and Matrices ---
 
@@ -52,7 +54,7 @@ print(mat)            # Prints matrix again (that’s the double output you saw)
 
 # --- Image as an Array (Bridge to Computer Vision) ---
 
-pic = Image.open('img/red_panda.jpeg')  # Open an image file
+pic = Image.open(data_path('red_panda.jpg'))  # Open an image file
 pic                                     # Show image metadata (not the picture itself)
 
 type(pic)   # Check the object type → <class 'PIL.JpegImagePlugin.JpegImageFile'>
@@ -65,11 +67,24 @@ print(pic_arr.shape)
 pic_red = pic_arr.copy()
 
 
+# PIL loads images as RGB → channel 0 = Red, 1 = Green, 2 = Blue
 # Keep only the red channel:
-#pic_red[:, :, 2] = 0   # Set a channel to 0
 pic_red[:, :, 1] = 0   # Set green channel to 0
-pic_red[:, :, 0] = 0   # Set blue channel to 0
+pic_red[:, :, 2] = 0   # Set blue channel to 0
 
 # Show the modified image
 plt.imshow(pic_red)
+plt.title("Only the red channel (RGB index 0)")
+plt.show()
+
+# --- The classic trap: OpenCV loads images as BGR, not RGB ---
+
+img_bgr = cv2.imread(str(data_path('red_panda.jpg')))   # channel 0 = Blue!
+plt.imshow(img_bgr)                                      # Matplotlib assumes RGB
+plt.title("OpenCV image shown as-is: red and blue swapped")
+plt.show()
+
+img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)      # fix: convert before showing
+plt.imshow(img_rgb)
+plt.title("After cv2.cvtColor(..., cv2.COLOR_BGR2RGB)")
 plt.show()

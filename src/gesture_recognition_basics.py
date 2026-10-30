@@ -1,92 +1,127 @@
 """
 AI & Computer Vision – Practical Activity
 -----------------------------------------
-Hands + FaceMesh Tracking Demo (stable + educational)
+Gesture Recognition + Face Landmarks (MediaPipe Tasks API)
 
 Demonstriert:
 - wie Deep Learning Modelle (MediaPipe) Landmarken in Echtzeit erkennen,
-- die visuelle Hierarchie von "Pixel → Features → Bedeutung",
+- die visuelle Hierarchie "Pixel → Landmarken → Bedeutung (Geste)",
 - OOP-Struktur, um visuelle Pipelines sauber zu kapseln.
 
+Neu gegenüber der alten Version:
+- Nutzt die MediaPipe Tasks API. Das alte `mp.solutions` (Hands, FaceMesh)
+  gibt es in aktuellen MediaPipe-Versionen nicht mehr.
+- Erkennt jetzt wirklich Gesten (Thumb_Up, Victory, Open_Palm, ...),
+  nicht nur Landmarken.
+- Modelle (.task) werden beim ersten Start automatisch in models/ geladen.
+
 Getestet mit:
-Python 3.10–3.11
-mediapipe 0.10.14
-opencv-python 4.10
+Python 3.10–3.13, mediapipe 1.1, opencv 5.0
+
+Start:
+  python src/gesture_recognition_basics.py            # Webcam
+  python src/gesture_recognition_basics.py video.mp4  # Videodatei
 """
+
+import sys
+import time
 
 import cv2
 import mediapipe as mp
+from mediapipe.tasks.python import BaseOptions, vision
+from mediapipe.tasks.python.vision import drawing_utils, drawing_styles
+
+from common import download_model
+
+GESTURE_MODEL_URL = (
+    "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/"
+    "gesture_recognizer/float16/latest/gesture_recognizer.task"
+)
+FACE_MODEL_URL = (
+    "https://storage.googleapis.com/mediapipe-models/face_landmarker/"
+    "face_landmarker/float16/latest/face_landmarker.task"
+)
 
 
 class VisionTracker:
-    """Kombiniert MediaPipe Hands und FaceMesh in einer stabilen OpenCV-Pipeline."""
+    """Kombiniert Gesture Recognizer (Hände) und Face Landmarker in einer OpenCV-Pipeline."""
 
-    def __init__(self, camera_index: int = 0):
-        # Drawing-Utilities & Styles (Farbdefinitionen für Landmarken)
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_styles = mp.solutions.drawing_styles
-
-        # MediaPipe Modelle
-        self.mp_hands = mp.solutions.hands
-        self.mp_face_mesh = mp.solutions.face_mesh
-
-        # Kamera öffnen
-        self.cap = cv2.VideoCapture(camera_index)
+    def __init__(self, source=0, num_hands: int = 2):
+        # Kamera oder Video öffnen
+        self.cap = cv2.VideoCapture(source)
         if not self.cap.isOpened():
-            raise RuntimeError("❌ Kamera konnte nicht geöffnet werden.")
+            raise RuntimeError(f"❌ Quelle konnte nicht geöffnet werden: {source}")
+        self.mirror = source == 0  # nur Webcam spiegeln
 
-        # Hand-Tracking-Modell (21 Landmarken)
-        self.hands = self.mp_hands.Hands(
-            model_complexity=1,
-            min_detection_confidence=0.7,
-            min_tracking_confidence=0.7
+        # Gesture Recognizer: 21 Hand-Landmarken + Gesten-Klassifikation
+        self.gestures = vision.GestureRecognizer.create_from_options(
+            vision.GestureRecognizerOptions(
+                base_options=BaseOptions(model_asset_path=str(download_model(GESTURE_MODEL_URL))),
+                running_mode=vision.RunningMode.VIDEO,
+                num_hands=num_hands,
+                min_hand_detection_confidence=0.7,
+                min_tracking_confidence=0.7,
+            )
         )
 
-        # FaceMesh-Modell (468 Punkte + Iris)
-        self.face_mesh = self.mp_face_mesh.FaceMesh(
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.7,
-            min_tracking_confidence=0.7
+        # Face Landmarker: 478 Punkte (inkl. Iris)
+        self.faces = vision.FaceLandmarker.create_from_options(
+            vision.FaceLandmarkerOptions(
+                base_options=BaseOptions(model_asset_path=str(download_model(FACE_MODEL_URL))),
+                running_mode=vision.RunningMode.VIDEO,
+                num_faces=1,
+                min_face_detection_confidence=0.7,
+                min_tracking_confidence=0.7,
+            )
         )
+
+        self.start = time.monotonic()
+        self.last_ts = -1
 
     # -----------------------------------------------------
     # Hilfsfunktionen für das Zeichnen
     # -----------------------------------------------------
 
-    def _draw_hands(self, image, results):
-        """Zeichnet Hand-Landmarks mit Standard-Styles."""
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                self.mp_drawing.draw_landmarks(
-                    image,
-                    hand_landmarks,
-                    self.mp_hands.HAND_CONNECTIONS,
-                    self.mp_styles.get_default_hand_landmarks_style(),
-                    self.mp_styles.get_default_hand_connections_style()
-                )
+    def _draw_hands(self, image, result):
+        """Zeichnet Hand-Landmarks und schreibt die erkannte Geste daneben."""
+        h, w, _ = image.shape
+        for i, landmarks in enumerate(result.hand_landmarks):
+            drawing_utils.draw_landmarks(
+                image,
+                landmarks,
+                vision.HandLandmarksConnections.HAND_CONNECTIONS,
+                drawing_styles.get_default_hand_landmarks_style(),
+                drawing_styles.get_default_hand_connections_style(),
+            )
 
-    def _draw_face_mesh(self, image, results):
-        """Zeichnet Gesichts-Landmarks stabil (mit Fallback bei MediaPipe-Bug)."""
-        if not results.multi_face_landmarks:
-            return
+            # Bedeutung: Top-Geste dieser Hand (Kategorie + Score)
+            if result.gestures and result.gestures[i]:
+                top = result.gestures[i][0]
+                side = result.handedness[i][0].category_name
+                if self.mirror:  # Spiegelbild: links/rechts tauschen
+                    side = {"Left": "Right", "Right": "Left"}.get(side, side)
+                wrist = landmarks[0]
+                pos = (int(wrist.x * w), int(wrist.y * h) + 30)
+                text = f"{side}: {top.category_name} {top.score:.2f}"
+                cv2.putText(image, text, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
-        for face_landmarks in results.multi_face_landmarks:
-            try:
-                # Primärer Versuch mit offiziellen Styles
-                self.mp_drawing.draw_landmarks(
-                    image,
-                    face_landmarks,
-                    self.mp_face_mesh.FACEMESH_CONTOURS,
-                    self.mp_styles.get_default_face_mesh_contours_style()
-                )
-            except KeyError:
-                # Bekannter Bug-Fix: fallback – Punkte manuell zeichnen
-                print("⚠️  FaceMesh-Drawing-Spec fehlte – Fallback aktiviert.")
-                h, w, _ = image.shape
-                for lm in face_landmarks.landmark:
-                    cx, cy = int(lm.x * w), int(lm.y * h)
-                    cv2.circle(image, (cx, cy), 1, (0, 255, 0), -1)
+    def _draw_face(self, image, result):
+        """Zeichnet die Gesichts-Konturen."""
+        for landmarks in result.face_landmarks:
+            drawing_utils.draw_landmarks(
+                image,
+                landmarks,
+                vision.FaceLandmarksConnections.FACE_LANDMARKS_CONTOURS,
+                landmark_drawing_spec=None,
+                connection_drawing_spec=drawing_styles.get_default_face_mesh_contours_style(),
+            )
+
+    def _timestamp_ms(self) -> int:
+        """VIDEO-Modus braucht streng steigende Zeitstempel."""
+        ts = int((time.monotonic() - self.start) * 1000)
+        ts = max(ts, self.last_ts + 1)
+        self.last_ts = ts
+        return ts
 
     # -----------------------------------------------------
     # Haupt-Loop
@@ -100,25 +135,26 @@ class VisionTracker:
             while True:
                 success, frame = self.cap.read()
                 if not success:
-                    print("⚠️  Kein Kamerabild empfangen – beende Programm.")
+                    print("⚠️  Kein Bild mehr – beende Programm.")
                     break
 
-                # Spiegelung für intuitive Darstellung
-                frame = cv2.flip(frame, 1)
+                if self.mirror:
+                    frame = cv2.flip(frame, 1)
 
-                # MediaPipe erwartet RGB-Bilder
+                # MediaPipe erwartet RGB, OpenCV liefert BGR
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+                ts = self._timestamp_ms()
 
-                # Deep-Learning-Inference (Landmark Detection)
-                hand_results = self.hands.process(rgb)
-                face_results = self.face_mesh.process(rgb)
+                # Deep-Learning-Inference
+                gesture_result = self.gestures.recognize_for_video(mp_image, ts)
+                face_result = self.faces.detect_for_video(mp_image, ts)
 
                 # Ergebnisse zeichnen
-                self._draw_hands(frame, hand_results)
-                self._draw_face_mesh(frame, face_results)
+                self._draw_face(frame, face_result)
+                self._draw_hands(frame, gesture_result)
 
-                # Anzeige
-                cv2.imshow("AI & Computer Vision – Hands + FaceMesh", frame)
+                cv2.imshow("AI & Computer Vision – Gestures + Face", frame)
 
                 # ESC-Taste (27) → Beenden
                 if cv2.waitKey(5) & 0xFF == 27:
@@ -135,8 +171,8 @@ class VisionTracker:
 
     def close(self):
         """Schließt alle Ressourcen sauber."""
-        self.hands.close()
-        self.face_mesh.close()
+        self.gestures.close()
+        self.faces.close()
         self.cap.release()
         cv2.destroyAllWindows()
         print("✅ Ressourcen freigegeben. Session beendet.")
@@ -146,5 +182,5 @@ class VisionTracker:
 # Programmlogik
 # ---------------------------------------------------------
 if __name__ == "__main__":
-    tracker = VisionTracker()
-    tracker.run()
+    source = sys.argv[1] if len(sys.argv) > 1 else 0
+    VisionTracker(source).run()

@@ -1,31 +1,56 @@
-import numpy as np
+"""
+Face Detection with Haar Cascades (Viola–Jones, 2001)
+
+Classic, pre-deep-learning face detection: hand-designed features,
+a cascade of simple classifiers, a sliding window over a grayscale image.
+
+Note: OpenCV 5 no longer ships the cascade XML files inside the pip
+package, so the file lives in data/ now.
+
+Run:
+  python src/face_detection.py
+"""
+
 import cv2
-import matplotlib.pyplot as plt
 
-# Face Detection with Haar Cascades
+from common import data_path, output_path
 
-# Images add your image path to 'image'
-nadia = cv2.imread('image', 0)
-denis = cv2.imread('image', 0)
-solvay = cv2.imread('image', 0)
+# Images (all in data/) — try each one and compare
+IMAGES = {
+    "sabalenka": "Aryna_Sabalenka.jpg",
+    "mukwege": "Denis-Mukwege.jpg",
+    "solvay": "1911_Solvay_conference.jpg",   # 29 faces, small and dense
+}
 
-# Cascade File
-face_cascade = cv2.CascadeClassifier('data/haarcascade_smile.xml')
+# Cascade file: the frontal face model
+face_cascade = cv2.CascadeClassifier(str(data_path("haarcascade_frontalface_default.xml")))
+if face_cascade.empty():
+    raise RuntimeError("Cascade could not be loaded.")
 
-def detect_face(img):
-    face_img = img.copy()
-    face_rects = face_cascade.detectMultiScale(face_img, scaleFactor=1.3, minNeighbors=5)
-    
+
+def detect_face(img_gray, scale_factor=1.3, min_neighbors=5):
+    """Return a copy of the image with a white box around every face found."""
+    face_img = img_gray.copy()
+    face_rects = face_cascade.detectMultiScale(
+        face_img, scaleFactor=scale_factor, minNeighbors=min_neighbors
+    )
     for (x, y, w, h) in face_rects:
         cv2.rectangle(face_img, (x, y), (x + w, y + h), (255, 255, 255), 3)
-    return face_img
+    return face_img, len(face_rects)
 
-# Apply detection
-result = detect_face(denis)
 
-# Show image in OpenCV Frame
-cv2.imshow("Detected Faces", result)
+for name, filename in IMAGES.items():
+    # Haar cascades work on grayscale: flag 0 = cv2.IMREAD_GRAYSCALE
+    img = cv2.imread(str(data_path(filename)), cv2.IMREAD_GRAYSCALE)
 
-# Wait for key press and close
-cv2.waitKey(0)
+    # Experiment: lower scaleFactor (e.g. 1.1) and minNeighbors for the Solvay photo
+    result, count = detect_face(img)
+    print(f"{name}: {count} face(s) found")
+
+    cv2.imwrite(str(output_path(f"faces_{name}.jpg")), result)
+
+    # Show image in OpenCV window, any key → next image
+    cv2.imshow(f"Detected Faces – {name}", result)
+    cv2.waitKey(0)
+
 cv2.destroyAllWindows()

@@ -1,6 +1,6 @@
 # Lab task: the focal length of your phone camera
 
-Session of 13 November 2026 · individual task · about 45 minutes
+Session of 11 December 2026 · individual task · about 45 minutes
 
 ## Goal
 

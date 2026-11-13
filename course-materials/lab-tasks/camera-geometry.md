@@ -1,11 +1,20 @@
 # Lab task: the focal length of your phone camera
 
-Session of 13 November 2026 · individual task · about 45 minutes
+Session of 11 December 2026 · individual task · about 45 minutes
 
 ## Goal
 
 You find the focal length **f** of your own phone camera, in pixels, and
 write it on the board next to your phone model. Then we compare.
+
+## Three rules, or it will not work
+
+1. **Landscape only, 1x lens, no zoom.** Every photo the same way. Mixed
+   orientations or lenses break the result.
+2. **JPG, not HEIC.** OpenCV cannot read iPhone HEIC files. Export them as
+   JPG first.
+3. **The whole board in every photo.** If a corner is cut off, the photo is
+   useless.
 
 ## What you need
 

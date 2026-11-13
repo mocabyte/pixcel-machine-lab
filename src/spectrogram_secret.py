@@ -19,6 +19,14 @@ Run from the src/ folder:
       python spectrogram_secret.py show --wav ../output/secret.wav --window 256
       python spectrogram_secret.py show --wav ../output/secret.wav --window 4096
 
+  4. Hide the secret inside your own sound (a song, a voice recording)
+      python spectrogram_secret.py hide --text "HELLO" --carrier my_song.wav --out mixed.wav
+      python spectrogram_secret.py show --wav ../output/mixed.wav
+      python spectrogram_secret.py show --wav ../output/mixed.wav --fmin 13000 --fmax 19000
+
+     --level sets how loud the secret is next to your sound, in dB.
+     -10 is easy to see and easy to hear, -40 is hidden well.
+
 Needs only numpy and opencv.
 """
 
@@ -50,6 +58,19 @@ def write_wav(path: Path, signal: np.ndarray, rate: int = RATE) -> None:
 
 
 def read_wav(path: Path) -> tuple[np.ndarray, int]:
+    if not path.exists():
+        raise SystemExit(f"File not found: {path}")
+    if path.suffix.lower() != ".wav":
+        # MP3 and friends: use librosa if it is installed.
+        try:
+            import librosa
+        except ImportError:
+            raise SystemExit(
+                f"{path.name} is not a WAV file. Convert it to WAV first, "
+                "or run 'pip install librosa soundfile' and try again."
+            )
+        signal, rate = librosa.load(str(path), sr=None, mono=True)
+        return signal.astype(np.float64), int(rate)
     with wave.open(str(path), "rb") as f:
         if f.getsampwidth() != 2:
             raise SystemExit("Only 16-bit WAV files are supported.")
@@ -79,6 +100,24 @@ def hide(args):
         if img is None:
             raise SystemExit(f"Could not read image {args.image}")
 
+    # With a carrier, the secret is mixed into your own sound. It goes high
+    # up, where music has little energy and ears are weak.
+    carrier, rate = None, RATE
+    if args.carrier:
+        carrier, rate = read_wav(Path(args.carrier))
+    fmin = args.fmin if args.fmin else (14000.0 if carrier is not None else 1000.0)
+    fmax = args.fmax if args.fmax else (18000.0 if carrier is not None else 9000.0)
+    limit = 0.45 * rate
+    if fmax > limit:
+        fmin, fmax = fmin * limit / fmax, limit
+        print(f"Your sound has {rate} samples per second, so it cannot hold "
+              f"frequencies above {rate / 2:.0f} Hz. Using {fmin:.0f} to {fmax:.0f} Hz.\n")
+    seconds = args.seconds
+    if carrier is not None:
+        seconds = min(seconds, len(carrier) / rate - args.start)
+        if seconds <= 0.5:
+            raise SystemExit("The carrier is too short for --start and --seconds.")
+
     # Each picture column becomes one short slice of time,
     # each picture row becomes one frequency.
     cols = int(ROWS * img.shape[1] / img.shape[0])
@@ -86,9 +125,9 @@ def hide(args):
     loud = (img.astype(np.float64) / 255.0) ** 2          # brightness -> loudness
 
     # Top row of the picture = highest frequency.
-    freqs = np.linspace(args.fmax, args.fmin, ROWS)
-    per_col = int(RATE * args.seconds / cols)
-    t = np.arange(cols * per_col) / RATE
+    freqs = np.linspace(fmax, fmin, ROWS)
+    per_col = max(int(rate * seconds / cols), 1)
+    t = np.arange(cols * per_col) / rate
     phase = np.random.default_rng(0).uniform(0, 2 * np.pi, ROWS)
 
     signal = np.zeros(cols * per_col)
@@ -98,9 +137,22 @@ def hide(args):
         signal[c * per_col:(c + 1) * per_col] = loud[:, c] @ tones
 
     path = output_path(args.out)
-    write_wav(path, signal)
     print(f"picture   {cols} x {ROWS} px")
-    print(f"sound     {len(signal) / RATE:.1f} s, {args.fmin:.0f} to {args.fmax:.0f} Hz")
+    if carrier is None:
+        write_wav(path, signal, rate)
+        print(f"sound     {len(signal) / rate:.1f} s, {fmin:.0f} to {fmax:.0f} Hz")
+    else:
+        # Set the loudness of the secret relative to the carrier, then add.
+        a = int(args.start * rate)
+        signal = signal[:len(carrier) - a]
+        rms = lambda x: np.sqrt(np.mean(x ** 2)) + 1e-12
+        gain = rms(carrier[a:a + len(signal)]) / rms(signal) * 10 ** (args.level / 20)
+        mixed = carrier.copy()
+        mixed[a:a + len(signal)] += gain * signal
+        write_wav(path, mixed, rate)
+        print(f"carrier   {Path(args.carrier).name}, {len(carrier) / rate:.1f} s at {rate} Hz")
+        print(f"secret    {len(signal) / rate:.1f} s from second {args.start:.1f}, "
+              f"{fmin:.0f} to {fmax:.0f} Hz, {args.level:.0f} dB next to the carrier")
     print(f"written -> {path}")
     print("Play it. Then run 'show' on it.")
 
@@ -121,15 +173,21 @@ def show(args):
     spec = np.abs(np.fft.rfft(frames, axis=1)).T          # rows = frequency
 
     # Keep the range we care about, convert to decibels, low notes at the bottom.
-    top = int(args.fmax / (rate / 2) * (spec.shape[0] - 1))
-    db = 20 * np.log10(spec[:top] + 1e-6)
+    hz = rate / 2 / (spec.shape[0] - 1)
+    fmax = min(args.fmax or rate / 2, rate / 2)
+    bottom, top = int(args.fmin / hz), int(fmax / hz)
+    if top - bottom < 2:
+        raise SystemExit("--fmin and --fmax leave nothing to show.")
+    db = 20 * np.log10(spec[bottom:top] + 1e-6)
     db = np.clip((db - db.max() + args.range) / args.range, 0, 1)
     pic = cv2.applyColorMap((db[::-1] * 255).astype(np.uint8), cv2.COLORMAP_MAGMA)
     pic = cv2.resize(pic, (1200, 600), interpolation=cv2.INTER_AREA)
 
-    path = output_path(Path(args.wav).stem + f"_spectrogram_w{win}.png")
+    band = f"_{args.fmin:.0f}-{fmax:.0f}Hz" if (args.fmin or args.fmax) else ""
+    path = output_path(Path(args.wav).stem + f"_spectrogram_w{win}{band}.png")
     cv2.imwrite(str(path), pic)
     print(f"sound                 {len(signal) / rate:.1f} s at {rate} Hz")
+    print(f"shown                 {args.fmin:.0f} to {fmax:.0f} Hz")
     print(f"window                {win} samples = {win / rate * 1000:.0f} ms")
     print(f"frequency resolution  {rate / win:.1f} Hz per row")
     print(f"time resolution       {hop / rate * 1000:.1f} ms per column")
@@ -145,14 +203,18 @@ def main():
     h.add_argument("--text", help="text to hide instead of a picture")
     h.add_argument("--out", default="secret.wav")
     h.add_argument("--seconds", type=float, default=6.0, help="length of the sound")
-    h.add_argument("--fmin", type=float, default=1000.0, help="lowest frequency in Hz")
-    h.add_argument("--fmax", type=float, default=9000.0, help="highest frequency in Hz")
+    h.add_argument("--fmin", type=float, default=None, help="lowest frequency in Hz (default 1000, with a carrier 14000)")
+    h.add_argument("--fmax", type=float, default=None, help="highest frequency in Hz (default 9000, with a carrier 18000)")
+    h.add_argument("--carrier", help="your own sound to hide the secret in (WAV, or MP3 if librosa is installed)")
+    h.add_argument("--level", type=float, default=-20.0, help="loudness of the secret next to the carrier, in dB")
+    h.add_argument("--start", type=float, default=0.0, help="second of the carrier where the secret begins")
     h.set_defaults(func=hide)
 
     s = sub.add_parser("show", help="draw the spectrogram of a WAV file")
     s.add_argument("--wav", required=True)
     s.add_argument("--window", type=int, default=1024, help="FFT window in samples")
-    s.add_argument("--fmax", type=float, default=10000.0, help="highest frequency shown")
+    s.add_argument("--fmin", type=float, default=0.0, help="lowest frequency shown")
+    s.add_argument("--fmax", type=float, default=None, help="highest frequency shown (default: everything)")
     s.add_argument("--range", type=float, default=60.0, help="dynamic range in dB")
     s.set_defaults(func=show)
 

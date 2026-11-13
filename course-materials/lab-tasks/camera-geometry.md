@@ -1,60 +1,66 @@
-# Lab task: the focal length of your own camera
+# Lab task: the focal length of your phone camera
 
-Session of 13 November 2026 · group task · about 45 minutes
+Session of 13 November 2026 · individual task · about 45 minutes
 
 ## Goal
 
-Every team finds the focal length **f** of a laptop webcam, in pixels, and
-writes it on the board. Then we compare.
+You find the focal length **f** of your own phone camera, in pixels, and
+write it on the board next to your phone model. Then we compare.
 
-## Team checkerboard
+## What you need
 
-For teams with a second screen (laptop or tablet).
+- Your laptop, showing the checkerboard
+- Your phone, taking the photos
+- A ruler, or the Measure app
 
-1. Show `data/checkerboard_9x6.png` full-screen on the second screen.
-   Brightness up, no reflections.
-2. Measure the full width of the board (10 squares) in millimetres and
-   divide by 10. That is your square size. Do not zoom the image afterwards.
-3. From the `src/` folder, capture 10 to 15 views. Tilt and move the screen
-   or the camera between shots. Space keeps a view, q ends.
+## Steps
 
-   ```
-   python camera_calibration.py capture --out myboard
-   ```
+1. **Show the board.** Open `data/checkerboard_9x6.png` full-screen on your
+   laptop. Brightness up, no reflections on the screen.
 
-4. Solve, with your own square size in mm:
+2. **Measure a square.** Measure the full width of the board (10 squares) in
+   millimetres and divide by 10. Do not zoom the image after measuring.
+
+3. **Take 10 to 15 photos with your phone.**
+   - Always landscape, always the normal 1x lens, no zoom.
+   - The whole board must be visible in every photo.
+   - Change the view each time: from the left, from the right, from above,
+     closer, further away, board in a corner of the picture.
+   - Fifteen different views beat fifty identical ones.
+
+4. **Move the photos to your laptop** into a new folder `src/myboard/`
+   (AirDrop, cable or cloud). They must be JPG. On an iPhone, AirDrop
+   usually converts them; if you end up with `.heic` files, export them as
+   JPG first.
+
+5. **Solve.** From the `src/` folder, with your own square size in mm:
 
    ```
    python camera_calibration.py solve --images myboard --square 20
    ```
 
-5. Note fx, fy and the reprojection error. Below 1 px is good.
+6. **Read the result.**
+   - `fx`, `fy`: the focal length in pixels. They should be nearly equal.
+   - `cx`, `cy`: the image centre. Close to half the width and height?
+   - `reprojection error`: below 1 px is good.
+   - If the error is high, remove the worst view the script names and solve
+     again.
 
-## Team tissue pack
+## Check it against the world
 
-For teams without a second screen. No script needed.
+Take one more photo of an object whose height you know, for example a
+tissue pack, from a distance you measured. Read off its height in pixels
+and predict the distance:
 
-1. Measure the long side of a tissue pack with a ruler: **Y**, in mm.
-2. Stand it up at a measured distance from the webcam, for example 500 mm:
-   **Z**.
-3. Take a photo and read off the height of the pack in pixels: **y**.
-4. Compute the focal length:
+```
+Z = f × Y ÷ y
+```
 
-   ```
-   f = y × Z ÷ Y
-   ```
-
-5. Test it. Move the pack to a distance you have not measured, take a new
-   photo, and predict the distance:
-
-   ```
-   Z = f × Y ÷ y
-   ```
-
-   Then check with the ruler. How far off are you?
+Y is the real height in mm, y the height in the photo in pixels. How far
+off are you?
 
 ## To discuss afterwards
 
-- Do the two methods agree on f for the same laptop model?
-- What does the checkerboard give you that the tissue pack cannot?
-- What happens to f if the webcam records at a different resolution?
+- Why is your f so much larger than the 800 px from the lecture?
+- Do two phones of the same model get the same f?
+- What happens to f if you switch to the wide-angle or the tele lens?

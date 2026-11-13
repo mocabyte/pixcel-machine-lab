@@ -142,8 +142,12 @@ def solve(args):
     img_dir = Path(args.images)
     paths = sorted(p for p in img_dir.iterdir()
                    if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
+    heic = [p.name for p in img_dir.iterdir() if p.suffix.lower() in {".heic", ".heif"}]
+    if heic:
+        print(f"Skipping {len(heic)} HEIC file(s): OpenCV cannot read them. "
+              "Export them as JPG first.\n")
     if not paths:
-        raise SystemExit(f"No images in {img_dir}")
+        raise SystemExit(f"No JPG or PNG images in {img_dir}")
 
     pattern = (args.cols, args.rows)
 
@@ -163,6 +167,10 @@ def solve(args):
             print(f"  {path.name}: could not read")
             continue
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        if size is not None and gray.shape[::-1] != size:
+            print(f"  {path.name}: skipped, different size or orientation "
+                  f"({gray.shape[1]}x{gray.shape[0]} instead of {size[0]}x{size[1]})")
+            continue
         size = gray.shape[::-1]
 
         found, corners = cv2.findChessboardCorners(
